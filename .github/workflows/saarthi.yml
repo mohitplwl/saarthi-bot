@@ -1,0 +1,42 @@
+name: Saarthi
+
+on:
+  schedule:
+    - cron: "55 3 * * 1-5"        # 09:25 IST, Monday to Friday
+  workflow_dispatch:
+    inputs:
+      check:
+        description: "Connection test only (sends a Telegram message and stops)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write                  # lets the bot save its encrypted state file
+
+concurrency:
+  group: saarthi-${{ inputs.check && 'check' || 'run' }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests==2.32.3 pyotp==2.9.0 cryptography==43.0.3
+      - name: Run Saarthi
+        env:
+          ANGEL_API_KEY: ${{ secrets.ANGEL_API_KEY }}
+          ANGEL_CLIENT_ID: ${{ secrets.ANGEL_CLIENT_ID }}
+          ANGEL_PIN: ${{ secrets.ANGEL_PIN }}
+          ANGEL_TOTP_SECRET: ${{ secrets.ANGEL_TOTP_SECRET }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          STATE_KEY: ${{ secrets.STATE_KEY }}
+        run: |
+          git config user.name "saarthi-bot"
+          git config user.email "saarthi-bot@users.noreply.github.com"
+          python saarthi.py ${{ inputs.check && '--check' || '' }}
